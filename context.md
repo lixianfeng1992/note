@@ -206,3 +206,87 @@ ECStack = [
   globalContext
 ];
 ```
+
+# This
+Reference 是一个 Specification Type，也就是 “只存在于规范里的抽象类型”。它们是为了更好地描述语言的底层行为逻辑才存在的，但并不存在于实际的 js 代码中</br>
+Reference由三个组成部分，分别是：
+- base value
+- referenced name
+- strict reference
+
+base value 就是属性所在的对象或者就是 EnvironmentRecord, 它的值只可能是 undefined, an Object, a Boolean, a String, a Number, or an environment record 其中的一种。
+```js
+var foo = 1;
+var fooReference = {
+  base: EnvironmentRecord,
+  name: 'foo',
+  strict: false
+}
+```
+```js
+var foo = {
+  bar: function () {
+    return this;
+  }
+};
+
+foo.bar(); // foo
+
+// bar对应的Reference是：
+var BarReference = {
+  base: foo,
+  propertyName: 'bar',
+  strict: false
+};
+```
+
+## 确定this的值
+1. 计算 MemberExpression 的结果赋值给 ref
+2. 判断 ref 是不是一个 Reference 类型
+  + 2.1 如果 ref 是 Reference，并且 IsPropertyReference(ref) 是 true, 那么 this 的值为 GetBase(ref)
+  + 2.2 如果 ref 是 Reference，并且 base value 值是 Environment Record, 那么this的值为 ImplicitThisValue(ref)
+  + 2.3 如果 ref 不是 Reference，那么 this 的值为 undefined
+
+## 具体分析
+1. 计算 MemberExpression 的结果赋值给 ref
+  MemberExpression
+  - PrimaryExpression 原始表达式
+  - FunctionExpression 函数定义表达式
+  - MemberExpression [ Expression ] 属性访问表达式
+  - MemberExpression . IdentifierName 属性访问表达式
+  - new MemberExpression Arguments 对象创建表达式
+```js
+function foo() {
+  console.log(this)
+}
+
+foo(); // MemberExpression 是 foo
+
+function foo() {
+  return function() {
+    console.log(this)
+  }
+}
+
+foo()(); // MemberExpression 是 foo()
+
+var foo = {
+  bar: function () {
+    return this;
+  }
+}
+
+foo.bar(); // MemberExpression 是 foo.bar
+```
+## foo.bar()
+MemberExpression 计算的结果是 foo.bar, foo.bar 是一个 Reference
+```js
+var Reference = {
+  base: foo,
+  name: 'bar',
+  strict: false
+};
+```
+- IsPropertyReference 方法，如果 base value 是一个对象，结果返回 true。
+- base value 为 foo，是一个对象，所以 IsPropertyReference(ref) 结果为 true。
+`this = GetBase(ref)， this 也就是　foo`
